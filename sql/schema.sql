@@ -1,14 +1,16 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE pages (
+CREATE TABLE IF NOT EXISTS pages (
   id SERIAL PRIMARY KEY,
-  url TEXT UNIQUE NOT NULL,
+  url TEXT NOT NULL,
   title TEXT,
   content TEXT,
-  embedding VECTOR(768) -- match your embedding size
+  embedding VECTOR(768),
+  chunk_index INT DEFAULT 0,
+  UNIQUE (url, chunk_index)
 );
 
-CREATE TABLE page_relations (
+CREATE TABLE IF NOT EXISTS page_relations (
   from_page_id INT REFERENCES pages(id),
   to_page_id INT REFERENCES pages(id),
   relation_type TEXT,

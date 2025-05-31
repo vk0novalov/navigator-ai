@@ -15,7 +15,7 @@ export async function runTasksWithLimit(tasks, limit) {
   return results;
 }
 
-export async function mapAsync(array, fn, limit) {
+export async function processAsync(array, fn, limit) {
   await runTasksWithLimit(
     array.map((item) => () => fn(item)),
     limit,
