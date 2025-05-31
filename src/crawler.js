@@ -17,19 +17,17 @@ async function crawl(url, depth = 0) {
 
   console.log(`🔍 Crawling: ${url}`);
   try {
-    const res = await fetch(url);
-    const html = await res.text();
+    const html = await fetch(url).then((res) => res.text());
+    const page = await parseFromHTML(html, BASE_URL);
 
-    const result = await parseFromHTML(html, BASE_URL);
-
-    const chunks = splitTextIntoChunks(result.content);
+    const chunks = splitTextIntoChunks(page.content);
     for (const [i, chunk] of chunks.entries()) {
       const embedding = await embed(chunk);
-      await storePage(url, result.title, result.content, embedding, i);
+      await storePage(url, page.title, page.content, embedding, i);
     }
 
     await processAsync(
-      result.urls,
+      page.urls,
       async (url) => {
         await crawl(url, depth + 1);
       },
