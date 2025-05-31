@@ -1,17 +1,17 @@
 import { processAsync } from './utils/promise-limit.js';
 import { embed } from './services/embeddings.js';
-import { parseFromHTML } from './services/html-parser.js';
-import { storePage } from './services/storage.js';
+import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
+import { createWebsite, storePage, storePageRelations } from './services/storage.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 
-const BASE_URL = 'https://overreacted.io/';
+const BASE_URL = 'https://overreacted.io';
 
 const MAX_DEPTH = 3;
-const MAX_CONCURRENT = 1;
+const MAX_CONCURRENT = 2;
 
 const visited = new Set();
 
-async function crawl(url, depth = 0) {
+async function crawl(siteId, url, depth = 0) {
   if (visited.has(url) || depth > MAX_DEPTH) return;
   visited.add(url);
 
@@ -23,14 +23,23 @@ async function crawl(url, depth = 0) {
     const chunks = splitTextIntoChunks(page.content);
     for (const [i, chunk] of chunks.entries()) {
       const embedding = await embed(chunk);
-      await storePage(url, page.title, page.content, embedding, i);
+      await storePage({
+        siteId,
+        url,
+        title: page.title,
+        content: page.content,
+        embedding,
+        chunkIndex: i,
+      });
     }
+
+    if (!page.urls) return;
+
+    await storePageRelations(siteId, url, page.urls);
 
     await processAsync(
       page.urls,
-      async (url) => {
-        await crawl(url, depth + 1);
-      },
+      async (url) => await crawl(siteId, url, depth + 1),
       MAX_CONCURRENT,
     );
   } catch (err) {
@@ -38,7 +47,16 @@ async function crawl(url, depth = 0) {
   }
 }
 
-crawl(BASE_URL).then(() => {
+async function main() {
+  const normalizedUrl = normalizeUrl('/', BASE_URL);
+  const site = await createWebsite('Overreacted', normalizedUrl);
+
+  console.log(`Starting crawl from ${normalizedUrl}`);
+  await crawl(site.id, normalizeUrl('/', normalizedUrl));
   console.log('✅ Done crawling');
   process.exit(0);
+}
+main().catch((err) => {
+  console.error('❌ Error in main:', err);
+  process.exit(1);
 });

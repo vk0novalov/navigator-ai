@@ -9,6 +9,17 @@ const pg = new Client({
 });
 await pg.connect();
 
+export async function createWebsite(name, url) {
+  const { rows } = await pg.query(
+    `INSERT INTO websites (name, url)
+     VALUES ($1, $2)
+     ON CONFLICT (url) DO UPDATE SET name = EXCLUDED.name
+     RETURNING id`,
+    [name, url],
+  );
+  return rows[0];
+}
+
 // Format the embedding array as a PostgreSQL vector literal
 const formatVector = (vector) => {
   if (!Array.isArray(vector) || vector.length === 0) {
@@ -17,17 +28,32 @@ const formatVector = (vector) => {
   return `[${vector.join(',')}]`;
 };
 
-export async function storePage(url, title, content, embedding, index) {
+export async function storePage({ siteId, url, title, content, embedding, chunkIndex }) {
   const vectorLiteral = formatVector(embedding);
 
   await pg.query(
-    `INSERT INTO pages (url, title, content, embedding, chunk_index)
-     VALUES ($1, $2, $3, $4::vector, $5)
+    `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index)
+     VALUES ($1, $2, $3, $4, $5::vector, $6)
      ON CONFLICT (url, chunk_index) DO UPDATE SET
        title = EXCLUDED.title,
        content = EXCLUDED.content,
        embedding = EXCLUDED.embedding`,
-    [url, title, content, vectorLiteral, index],
+    [siteId, url, title, content, vectorLiteral, chunkIndex],
+  );
+}
+
+export async function storePageRelations(siteId, fromUrl, urls) {
+  if (!Array.isArray(urls) || urls.length === 0) return;
+
+  const filteredUrls = urls.filter((url) => url !== fromUrl);
+  if (filteredUrls.length === 0) return;
+
+  const values = filteredUrls.map((toUrl) => `($1, $2, '${toUrl}')`).join(', ');
+  await pg.query(
+    `INSERT INTO page_relations (website_id, from_url, to_url)
+     VALUES ${values}
+     ON CONFLICT (website_id, from_url, to_url) DO NOTHING`,
+    [siteId, fromUrl],
   );
 }
 

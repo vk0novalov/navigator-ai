@@ -1,7 +1,7 @@
 import { Defuddle } from 'defuddle/node';
 import * as cheerio from 'cheerio';
 
-function normalizeUrl(rawUrl, baseUrl) {
+export function normalizeUrl(rawUrl, baseUrl) {
   try {
     const url = new URL(rawUrl, baseUrl);
     // Remove fragment and query for normalization
