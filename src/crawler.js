@@ -7,7 +7,7 @@ import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 const BASE_URL = 'https://overreacted.io';
 
 const MAX_DEPTH = 3;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 1;
 
 const visited = new Set();
 
@@ -19,10 +19,11 @@ async function crawl(siteId, url, depth = 0) {
   try {
     const html = await fetch(url).then((res) => res.text());
     const page = await parseFromHTML(html, BASE_URL);
+    if (!page) return;
 
     const chunks = splitTextIntoChunks(page.content);
     for (const [i, chunk] of chunks.entries()) {
-      const embedding = await embed(chunk);
+      const embedding = await embed([page.title, page.description, chunk].join(' '));
       await storePage({
         siteId,
         url,

@@ -1,9 +1,12 @@
 import ollama from 'ollama';
 
-const EMBED_MODEL = 'nomic-embed-text';
+const EMBED_MODEL = 'snowflake-arctic-embed2';
 
 // Ensure the model is pulled before using it
-const { models } = await ollama.list();
+const { models } = await ollama.list().catch(() => {
+  console.error('❌ Ollama is not running or not accessible.');
+  process.exit(1);
+});
 if (!models.some((model) => model.name.startsWith(EMBED_MODEL))) {
   console.log(`🔄 Pulling embedding model: ${EMBED_MODEL}`);
   await ollama.pull({ model: EMBED_MODEL });
@@ -21,5 +24,6 @@ export async function embed(text) {
     input: text,
     truncate: false, // we use smart chunking, so no need to truncate
   });
+  // NOTE: it's required for cosine similarity calculations, but it depends on the model
   return normalize(result.embeddings[0]);
 }

@@ -57,14 +57,28 @@ export async function storePageRelations(siteId, fromUrl, urls) {
   );
 }
 
-export async function searchDocs(embedding, limit = 5) {
+function filterByRelevance(query, docs) {
+  // Simple relevance scoring based on the query and document title/content
+  const words = query.split(/\s+/).filter(Boolean);
+  return docs
+    .map((doc) => {
+      const score = words.filter((word) =>
+        `${doc.title} ${doc.content}`.toLowerCase().includes(word.toLowerCase()),
+      ).length;
+      return { ...doc, score };
+    })
+    .filter((doc) => doc.score > 0)
+    .sort((a, b) => b.score - a.score);
+}
+
+export async function searchDocs(query, embedding, limit = 5) {
   const vectorLiteral = formatVector(embedding);
 
   const result = await pg.query(
     `
-  SELECT url, title, content, chunk_index, embedding <-> $1::vector AS distance
+  SELECT DISTINCT url, title, content, chunk_index, embedding <=> $1::vector AS distance
   FROM pages
-  ORDER BY embedding <-> $1::vector ASC
+  ORDER BY embedding <=> $1::vector ASC
   LIMIT $2
 `,
     [vectorLiteral, limit * 3], // Fetch more to filter later
@@ -81,7 +95,9 @@ export async function searchDocs(embedding, limit = 5) {
       uniqueRows.set(row.url, row);
     }
   }
-  return Array.from(uniqueRows.values().take(limit));
+
+  // extra step to filter by relevance, because we might have fetched more rows than needed
+  return filterByRelevance(query, Array.from(uniqueRows.values())).slice(0, limit);
 }
 
 process.on('exit', async () => {

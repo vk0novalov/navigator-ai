@@ -12,10 +12,10 @@ CREATE TABLE IF NOT EXISTS pages (
   id SERIAL PRIMARY KEY,
   website_id INT NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
-  title TEXT,
-  content TEXT,
-  embedding VECTOR(768),
-  chunk_index INT DEFAULT 0,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  embedding VECTOR(1024) NOT NULL,  -- Adjust dimension as needed
+  chunk_index INT NOT NULL DEFAULT 0,
   UNIQUE (url, chunk_index)
 );
 
