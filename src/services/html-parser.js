@@ -1,5 +1,6 @@
 import { Defuddle } from 'defuddle/node';
 import * as cheerio from 'cheerio';
+import { convert } from 'html-to-text';
 
 const blacklist = ['favicon.', 'apple-touch-icon.', 'apple-touch-icon-precomposed.'];
 
@@ -44,6 +45,13 @@ export async function parseFromHTML(html, baseUrl) {
     return null;
   }
   const result = await Defuddle(html);
+  result.content = convert(result.content, {
+    wordwrap: false, // не ставить перенос кожні 80 символів
+    selectors: [
+      { selector: 'a', options: { ignoreHref: true } },
+      { selector: 'img', format: 'skip' },
+    ],
+  });
   result.urls = parseUrls(html, baseUrl);
   return result;
 }

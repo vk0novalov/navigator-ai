@@ -62,9 +62,11 @@ function filterByRelevance(query, docs) {
   const words = query.split(/\s+/).filter(Boolean);
   return docs
     .map((doc) => {
-      const score = words.filter((word) =>
-        `${doc.title} ${doc.content}`.toLowerCase().includes(word.toLowerCase()),
-      ).length;
+      const content = `${doc.title} ${doc.content}`.toLowerCase();
+      let score = words.filter((word) => content.includes(word.toLowerCase())).length;
+      if (doc.title.toLowerCase().includes(query.toLowerCase())) {
+        score += 5; // Boost score if title matches query
+      }
       return { ...doc, score };
     })
     .filter((doc) => doc.score > 0)
@@ -76,12 +78,13 @@ export async function searchDocs(query, embedding, limit = 5) {
 
   const result = await pg.query(
     `
-  SELECT DISTINCT url, title, content, chunk_index, embedding <=> $1::vector AS distance
+  SELECT url, title, content, chunk_index, embedding <=> $1::vector AS distance
   FROM pages
-  ORDER BY embedding <=> $1::vector ASC
+  WHERE embedding <=> $1::vector < 0.7
+  ORDER BY distance
   LIMIT $2
 `,
-    [vectorLiteral, limit * 3], // Fetch more to filter later
+    [vectorLiteral, Math.max(limit * 3, 10)], // Fetch more to filter later
   );
 
   const { rows } = result;
