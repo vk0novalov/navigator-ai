@@ -1,5 +1,5 @@
-import { Defuddle } from 'defuddle/node';
 import * as cheerio from 'cheerio';
+import { Defuddle } from 'defuddle/node';
 import { convert } from 'html-to-text';
 
 const blacklist = ['favicon.', 'apple-touch-icon.', 'apple-touch-icon-precomposed.'];

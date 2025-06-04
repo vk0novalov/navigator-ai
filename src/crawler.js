@@ -1,9 +1,9 @@
-import { processAsync } from './utils/promise-limit.js';
+import { classifyText } from './services/classifier.js';
 import { embedText } from './services/embeddings.js';
 import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
 import { createWebsite, storePage, storePageRelations } from './services/storage.js';
+import { processAsync } from './utils/promise-limit.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
-import { classifyText } from './services/classifier.js';
 
 const BASE_URL = 'https://overreacted.io';
 const TAGS = [

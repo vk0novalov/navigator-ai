@@ -1,5 +1,5 @@
-import { searchDocs } from './services/storage.js';
 import { embedText } from './services/embeddings.js';
+import { searchDocs } from './services/storage.js';
 
 const query = process.argv.slice(2).join(' ');
 console.log(`🔦 Searching for: ${query}`);
