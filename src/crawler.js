@@ -1,10 +1,25 @@
 import { processAsync } from './utils/promise-limit.js';
-import { embed } from './services/embeddings.js';
+import { embedText } from './services/embeddings.js';
 import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
 import { createWebsite, storePage, storePageRelations } from './services/storage.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
+import { classifyText } from './services/classifier.js';
 
 const BASE_URL = 'https://overreacted.io';
+const TAGS = [
+  'React',
+  'RSC',
+  'Astro',
+  'Architecture',
+  'Server',
+  'Client',
+  'Geaks',
+  'Low-level',
+  'Prototype',
+  'How it works',
+  'Performance',
+  'Optimization',
+];
 
 const MAX_DEPTH = 3;
 const MAX_CONCURRENT = 1;
@@ -21,9 +36,15 @@ async function crawl(siteId, url, depth = 0) {
     const page = await parseFromHTML(html, BASE_URL);
     if (!page) return;
 
+    const tagScores = await classifyText(
+      [page.title, page.content.slice(0, 5000)].join('\n\n'),
+      TAGS,
+    );
+    const tags = tagScores.slice(0, 3).map((tag) => tag.label);
+
     const chunks = splitTextIntoChunks(page.content);
     for (const [i, chunk] of chunks.entries()) {
-      const embedding = await embed(`Title: ${page.title}`, `Content: ${chunk}`);
+      const embedding = await embedText(`Title: ${page.title}`, `Content: ${chunk}`);
       await storePage({
         siteId,
         url,
@@ -31,6 +52,7 @@ async function crawl(siteId, url, depth = 0) {
         content: page.content,
         embedding,
         chunkIndex: i,
+        tags,
       });
     }
 

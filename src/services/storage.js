@@ -28,17 +28,19 @@ const formatVector = (vector) => {
   return `[${vector.join(',')}]`;
 };
 
-export async function storePage({ siteId, url, title, content, embedding, chunkIndex }) {
+export async function storePage({ siteId, url, title, content, embedding, chunkIndex, tags = [] }) {
   const vectorLiteral = formatVector(embedding);
+  const tagsArray = `{${tags.map((tag) => `"${tag}"`).join(',')}}`;
 
   await pg.query(
-    `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index)
-     VALUES ($1, $2, $3, $4, $5::vector, $6)
+    `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index, tags)
+     VALUES ($1, $2, $3, $4, $5::vector, $6, $7::text[])
      ON CONFLICT (url, chunk_index) DO UPDATE SET
        title = EXCLUDED.title,
        content = EXCLUDED.content,
-       embedding = EXCLUDED.embedding`,
-    [siteId, url, title, content, vectorLiteral, chunkIndex],
+       embedding = EXCLUDED.embedding,
+       tags = EXCLUDED.tags`,
+    [siteId, url, title, content, vectorLiteral, chunkIndex, tagsArray],
   );
 }
 

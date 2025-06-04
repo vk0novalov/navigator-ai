@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS pages (
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   embedding VECTOR(1024) NOT NULL,  -- Adjust dimension as needed
+  tags TEXT[] NOT NULL DEFAULT '{}',
   chunk_index INT NOT NULL DEFAULT 0,
   UNIQUE (url, chunk_index)
 );

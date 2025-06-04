@@ -1,18 +1,6 @@
-import ollama from 'ollama';
+import { embed } from './ai-adapters/ollama.js';
 
-const EMBED_MODEL = 'bge-m3';
 const REQUIRED_NORMALIZATION = false;
-
-// Ensure the model is pulled before using it
-const { models } = await ollama.list().catch(() => {
-  console.error('❌ Ollama is not running or not accessible.');
-  process.exit(1);
-});
-if (!models.some((model) => model.name.startsWith(EMBED_MODEL))) {
-  console.log(`🔄 Pulling embedding model: ${EMBED_MODEL}`);
-  await ollama.pull({ model: EMBED_MODEL });
-  console.log(`✅ Model ${EMBED_MODEL} is ready for use.`);
-}
 
 function normalize(vec) {
   if (!REQUIRED_NORMALIZATION) return vec;
@@ -40,12 +28,27 @@ function prepareTextForEmbedding(...args) {
   return parts.map(clearText).filter(Boolean).join('\n\n');
 }
 
-export async function embed(text) {
-  const result = await ollama.embed({
-    model: EMBED_MODEL,
-    input: prepareTextForEmbedding(text),
-    truncate: false, // we use smart chunking, so no need to truncate
-  });
+export async function classifyViaEmbeddings(text, labels) {
+  const hypotheses = labels.map((label) => `This text is about ${label}.`);
+  const allTexts = [text, ...hypotheses];
+
+  const embeddings = await Promise.all(allTexts.map((text) => embed(text, { truncate: true })));
+
+  const [textVector, ...labelVectors] = embeddings;
+
+  const cosine = (a, b) =>
+    a.reduce((sum, val, i) => sum + val * b[i], 0) / (Math.hypot(...a) * Math.hypot(...b));
+
+  return labels
+    .map((label, i) => ({
+      label,
+      score: cosine(textVector, labelVectors[i]),
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
+export async function embedText(text) {
+  const embeddings = await embed(prepareTextForEmbedding(text));
   // NOTE: it's required for cosine similarity calculations, but it depends on the model
-  return normalize(result.embeddings[0]);
+  return normalize(embeddings);
 }
