@@ -10,7 +10,13 @@ function normalize(vec) {
 }
 
 function clearText(text) {
-  return text?.trim?.().replace(/\s+/g, ' ').replace(/\r\n/g, '\n').replace(/\n+/g, '\n');
+  return text
+    ?.trim?.()
+    .replace(/\s+/g, ' ')
+    .replace(/\r\n/g, '\n')
+    .replace(/(\w)-\n(\w)/g, '$1$2')
+    .replace(/\n(?=\w)/g, ' ')
+    .replace(/\n+/g, '\n');
 }
 
 function prepareTextForEmbedding(...args) {
