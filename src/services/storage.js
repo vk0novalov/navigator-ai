@@ -1,16 +1,18 @@
-import { Client } from 'pg';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
+import { vector } from '@electric-sql/pglite/vector';
 
-const pg = new Client({
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-  host: process.env.POSTGRES_HOST,
-  port: process.env.POSTGRES_PORT,
-});
-await pg.connect();
+const db = new PGlite('./.pgdata/', { extensions: { vector } });
+try {
+  const initialSql = await readFile('./sql/schema.sql', 'utf8');
+  await db.exec(initialSql);
+} catch (err) {
+  console.error('Error with PGLite initialization', err);
+  process.exit(1);
+}
 
 export async function createWebsite(name, url) {
-  const { rows } = await pg.query(
+  const { rows } = await db.query(
     `INSERT INTO websites (name, url)
      VALUES ($1, $2)
      ON CONFLICT (url) DO UPDATE SET name = EXCLUDED.name
@@ -32,7 +34,7 @@ export async function storePage({ siteId, url, title, content, embedding, chunkI
   const vectorLiteral = formatVector(embedding);
   const tagsArray = `{${tags.map((tag) => `"${tag}"`).join(',')}}`;
 
-  await pg.query(
+  await db.query(
     `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index, tags)
      VALUES ($1, $2, $3, $4, $5::vector, $6, $7::text[])
      ON CONFLICT (url, chunk_index) DO UPDATE SET
@@ -51,7 +53,7 @@ export async function storePageRelations(siteId, fromUrl, urls) {
   if (filteredUrls.length === 0) return;
 
   const values = filteredUrls.map((toUrl) => `($1, $2, '${toUrl}')`).join(', ');
-  await pg.query(
+  await db.query(
     `INSERT INTO page_relations (website_id, from_url, to_url)
      VALUES ${values}
      ON CONFLICT (website_id, from_url, to_url) DO NOTHING`,
@@ -78,7 +80,7 @@ function filterByRelevance(query, docs) {
 export async function searchDocs(query, embedding, limit = 5) {
   const vectorLiteral = formatVector(embedding);
 
-  const result = await pg.query(
+  const result = await db.query(
     `
   SELECT url, title, content, chunk_index, embedding <=> $1::vector AS distance
   FROM pages
@@ -86,7 +88,7 @@ export async function searchDocs(query, embedding, limit = 5) {
   ORDER BY distance
   LIMIT $2
 `,
-    [vectorLiteral, Math.max(limit * 3, 10)], // Fetch more to filter later
+    [vectorLiteral, Math.max(limit * 10, 50)], // Fetch more to filter later
   );
 
   const { rows } = result;
@@ -105,6 +107,10 @@ export async function searchDocs(query, embedding, limit = 5) {
   return filterByRelevance(query, Array.from(uniqueRows.values())).slice(0, limit);
 }
 
+export async function dropAll() {
+  await db.exec('DROP TABLE IF EXISTS websites, pages, page_relations CASCADE');
+}
+
 process.on('exit', async () => {
-  await pg.end();
+  await db.close();
 });

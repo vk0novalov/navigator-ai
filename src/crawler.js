@@ -44,7 +44,8 @@ async function crawl(siteId, url, depth = 0) {
 
     const chunks = splitTextIntoChunks(page.content);
     for (const [i, chunk] of chunks.entries()) {
-      const embedding = await embedText(`Title: ${page.title}`, `Content: ${chunk}`);
+      const content = i === 0 ? `Title: ${page.title}\n\nContent: ${chunk}` : chunk;
+      const embedding = await embedText(content);
       await storePage({
         siteId,
         url,
