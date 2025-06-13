@@ -17,11 +17,6 @@ Navigator AI is a project that uses PostgreSQL with the pgvector extension to st
 ### Setup
 1. Clone the repository.
 2. Copy `.env.example` to `.env` and set your environment variables.
-3. Start the database:
-   ```sh
-   docker-compose up
-   ```
-   This will start a PostgreSQL database with the pgvector extension and initialize the schema from `sql/schema.sql`.
 
 ### Usage
 - Add or crawl pages using scripts in `src/`.
