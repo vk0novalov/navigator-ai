@@ -1,11 +1,10 @@
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { vector } from '@electric-sql/pglite/vector';
 
-const db = new PGlite('./.pgdata/', { extensions: { vector } });
+const db = new PGlite('.pgdata/', { extensions: { vector } });
 try {
-  const initialSql = await readFile(join(process.cwd(), './sql/schema.sql'), 'utf8');
+  const initialSql = await readFile('sql/schema.sql', 'utf8');
   await db.exec(initialSql);
 } catch (err) {
   console.error('Error with PGLite initialization', err);
