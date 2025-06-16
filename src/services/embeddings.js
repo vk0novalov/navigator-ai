@@ -20,7 +20,7 @@ function clearText(text) {
 }
 
 function prepareTextForEmbedding(...args) {
-  if (!args || !args.length) {
+  if (!args || args.length === 0) {
     throw new Error('No text provided for embedding.');
   }
   let parts = args;

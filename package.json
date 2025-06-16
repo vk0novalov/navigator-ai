@@ -7,7 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "format": "biome check --write --files-ignore-unknown=true --organize-imports-enabled=true --no-errors-on-unmatched src/",
     "lint": "biome lint src/",
-    "check": "biome check --apply src/",
+    "check": "biome check --write src/",
     "crawler": "node --env-file=.env ./src/crawler.js",
     "search": "node --env-file=.env ./src/search.js",
     "clear": "node --env-file=.env ./src/clear.js",

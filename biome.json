@@ -1,14 +1,5 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.5.3/schema.json",
-  "organizeImports": {
-    "enabled": true
-  },
-  "linter": {
-    "enabled": true,
-    "rules": {
-      "recommended": true
-    }
-  },
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
@@ -16,10 +7,47 @@
     "indentWidth": 2,
     "lineWidth": 100
   },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "single",
-      "semicolons": "always"
+  "organizeImports": { "enabled": true },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "complexity": {
+        "noForEach": "error",
+        "noStaticOnlyClass": "error",
+        "noUselessSwitchCase": "error",
+        "useDateNow": "error",
+        "useFlatMap": "error"
+      },
+      "correctness": { "noInvalidBuiltinInstantiation": "error" },
+      "style": {
+        "noNegationElse": "off",
+        "useExplicitLengthCheck": "error",
+        "useForOf": "error",
+        "useNodejsImportProtocol": "error",
+        "useNumberNamespace": "error",
+        "useThrowNewError": "error"
+      },
+      "suspicious": {
+        "noDoubleEquals": "error",
+        "noThenProperty": "error",
+        "useErrorMessage": "error",
+        "useNumberToFixedDigitsArgument": "error"
+      }
     }
-  }
+  },
+  "javascript": {
+    "formatter": { "semicolons": "always", "quoteStyle": "single" },
+    "globals": ["Global1"]
+  },
+  "overrides": [
+    {
+      "include": ["tests/**"],
+      "linter": { "rules": { "suspicious": { "noDoubleEquals": "off" } } }
+    },
+    {
+      "include": ["tests/**"],
+      "linter": { "rules": { "suspicious": { "noDoubleEquals": "off" } } }
+    }
+  ]
 }
