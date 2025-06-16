@@ -1,4 +1,4 @@
-import { classifyText } from './services/classifier.js';
+import { generateTags } from './services/classifier.js';
 import { embedText } from './services/embeddings.js';
 import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
 import { createWebsite, storePage, storePageRelations } from './services/storage.js';
@@ -6,20 +6,6 @@ import { processAsync } from './utils/promise-limit.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 
 const BASE_URL = 'https://overreacted.io';
-const TAGS = [
-  'React',
-  'RSC',
-  'Astro',
-  'Architecture',
-  'Server',
-  'Client',
-  'Geaks',
-  'Low-level',
-  'Prototype',
-  'How it works',
-  'Performance',
-  'Optimization',
-];
 
 const MAX_DEPTH = 3;
 const MAX_CONCURRENT = 1;
@@ -36,11 +22,9 @@ async function crawl(siteId, url, depth = 0) {
     const page = await parseFromHTML(html, BASE_URL);
     if (!page) return;
 
-    const tagScores = await classifyText(
-      [page.title, page.content.slice(0, 5000)].join('\n\n'),
-      TAGS,
-    );
-    const tags = tagScores.slice(0, 3).map((tag) => tag.label);
+    const shortSummary = [page.title, page.content.slice(0, 5000)].join('\n\n');
+    const semanticTags = await generateTags(shortSummary);
+    console.log('Generated tags:', semanticTags);
 
     const chunks = splitTextIntoChunks(page.content);
     for (const [i, chunk] of chunks.entries()) {
@@ -53,7 +37,7 @@ async function crawl(siteId, url, depth = 0) {
         content: page.content,
         embedding,
         chunkIndex: i,
-        tags,
+        tags: semanticTags,
       });
     }
 

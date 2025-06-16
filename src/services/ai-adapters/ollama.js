@@ -1,7 +1,8 @@
 import ollama, { Ollama } from 'ollama';
+import { cleanupResponse } from './ai-utils';
 
 const EMBED_MODEL = 'bge-m3';
-const CLASSIFIER_MODEL = 'llama3.2:3b';
+const CLASSIFIER_MODEL = 'qwen3:30b-a3b';
 
 const { OLLAMA_URL } = process.env;
 
@@ -39,7 +40,7 @@ export async function embed(text, { truncate = false } = {}) {
 export async function question(text) {
   const result = await ollamaClient.chat({
     model: CLASSIFIER_MODEL,
-    messages: [{ role: 'user', content: text }],
+    messages: [{ role: 'user', content: `${text} /no_think` }],
   });
-  return result.message.content;
+  return cleanupResponse(result.message.content);
 }
