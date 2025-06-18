@@ -1,3 +1,4 @@
+import { RetryStrategies, retry } from '../utils/retry.js';
 import { question } from './ai-adapters/ollama.js';
 
 export async function classifyText(text, labels) {
@@ -15,22 +16,21 @@ Only return well structured JSON without extra formatting. Do not wrap to Markdo
 
 Message:
 ${text}`;
-  const json = await question(prompt);
   try {
-    const parsed = JSON.parse(json);
-    // Remove duplicates based on label, cuz some models might return the same label multiple times
-    const seen = new Set();
-    const filtered = parsed.filter((item) => {
-      if (seen.has(item.label)) return false;
-      seen.add(item.label);
-      return true;
+    return await retry(async () => {
+      const json = await question(prompt);
+      const parsed = JSON.parse(json);
+      // Remove duplicates based on label, cuz some models might return the same label multiple times
+      const seen = new Set();
+      const filtered = parsed.filter((item) => {
+        if (seen.has(item.label)) return false;
+        seen.add(item.label);
+        return true;
+      });
+      return filtered.sort((a, b) => b.score - a.score);
     });
-    return filtered.sort((a, b) => b.score - a.score);
-  } catch (error) {
-    console.error('❌ Error processing JSON:', {
-      json,
-      error,
-    });
+  } catch (err) {
+    console.error('❌ Error processing JSON:', err);
     return [];
   }
 }
@@ -45,18 +45,18 @@ Rules:
 - Avoid jargon, invented phrases, or abstract concepts.
 - Use only topics clearly mentioned in the text.
 - Try to detect maximum relevant technologies, frameworks, libraries, and tools mentioned in the text.`;
-  const result = await question(`${prompt}\n\nBlog content:\n"""${text}\n"""`);
+
   try {
-    const tags = JSON.parse(result);
-    if (Array.isArray(tags) && tags.length > 0) {
-      return tags.map((tag) => tag.toLowerCase().trim()).filter(Boolean);
-    }
-    return [];
+    return await retry(async () => {
+      const result = await question(`${prompt}\n\nBlog content:\n"""${text}\n"""`);
+      const tags = JSON.parse(result);
+      if (Array.isArray(tags) && tags.length > 0) {
+        return tags.map((tag) => tag.toLowerCase().trim()).filter(Boolean);
+      }
+      return [];
+    }, RetryStrategies.AI_SERVICE);
   } catch (error) {
-    console.error('❌ Error processing JSON:', {
-      json: result,
-      error,
-    });
+    console.error('❌ Error processing JSON:', error);
     return [];
   }
 }

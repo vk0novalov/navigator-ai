@@ -1,5 +1,6 @@
 import ollama, { Ollama } from 'ollama';
-import { cleanupResponse } from './ai-utils';
+import { RetryStrategies, retry } from '../../utils/retry.js';
+import { cleanupResponse } from './ai-utils.js';
 
 const EMBED_MODEL = 'bge-m3';
 const CLASSIFIER_MODEL = 'qwen3:30b-a3b';
@@ -29,18 +30,22 @@ for (const model of requiredModels) {
 }
 
 export async function embed(text, { truncate = false } = {}) {
-  const result = await ollamaClient.embed({
-    model: EMBED_MODEL,
-    input: text,
-    truncate, // we use smart chunking, so no need to truncate by default
-  });
-  return result.embeddings[0];
+  return await retry(async () => {
+    const result = await ollamaClient.embed({
+      model: EMBED_MODEL,
+      input: text,
+      truncate, // we use smart chunking, so no need to truncate by default
+    });
+    return result.embeddings[0];
+  }, RetryStrategies.AI_SERVICE);
 }
 
 export async function question(text) {
-  const result = await ollamaClient.chat({
-    model: CLASSIFIER_MODEL,
-    messages: [{ role: 'user', content: `${text} /no_think` }],
-  });
-  return cleanupResponse(result.message.content);
+  return await retry(async () => {
+    const result = await ollamaClient.chat({
+      model: CLASSIFIER_MODEL,
+      messages: [{ role: 'user', content: `${text} /no_think` }],
+    });
+    return cleanupResponse(result.message.content);
+  }, RetryStrategies.AI_SERVICE);
 }

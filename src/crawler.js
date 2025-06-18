@@ -3,22 +3,21 @@ import { embedText } from './services/embeddings.js';
 import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
 import { createWebsite, storePage, storePageRelations } from './services/storage.js';
 import { processAsync } from './utils/promise-limit.js';
+import { RetryStrategies, retry } from './utils/retry.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 
-const BASE_URL = 'https://overreacted.io';
+const BASE_URL = process.env.TARGET_SITE || 'https://overreacted.io';
 
-const MAX_DEPTH = 3;
-const MAX_CONCURRENT = 1;
+const MAX_DEPTH = process.env.MAX_DEPTH || 3;
+const MAX_CONCURRENT = process.env.MAX_CONCURRENT || 1;
 
-const visited = new Set();
-
-async function crawl(siteId, url, depth = 0) {
+async function crawl(siteId, url, visited = new Set(), depth = 0) {
   if (visited.has(url) || depth > MAX_DEPTH) return;
   visited.add(url);
 
   console.log(`🔍 Crawling: ${url}`);
   try {
-    const html = await fetch(url).then((res) => res.text());
+    const html = await retry(() => fetch(url).then((res) => res.text()), RetryStrategies.NETWORK);
     const page = await parseFromHTML(html, BASE_URL);
     if (!page) return;
 
@@ -47,7 +46,7 @@ async function crawl(siteId, url, depth = 0) {
 
     await processAsync(
       page.urls,
-      async (url) => await crawl(siteId, url, depth + 1),
+      async (url) => await crawl(siteId, url, visited, depth + 1),
       MAX_CONCURRENT,
     );
   } catch (err) {
@@ -60,7 +59,7 @@ async function main() {
   const site = await createWebsite('Overreacted', normalizedUrl);
 
   console.log(`Starting crawl from ${normalizedUrl}`);
-  await crawl(site.id, normalizeUrl('/', normalizedUrl));
+  await crawl(site.id, normalizeUrl('/', normalizedUrl), new Set());
   console.log('✅ Done crawling');
   process.exit(0);
 }

@@ -21,7 +21,7 @@ export function normalizeUrl(rawUrl, baseUrl) {
     if (url.pathname.endsWith('/')) url.pathname = url.pathname.slice(0, -1);
     return url.toString();
   } catch (err) {
-    console.error(`Invalid URL: ${url}`, err);
+    console.error(`Invalid URL: ${rawUrl}`, err);
     return null;
   }
 }

@@ -1,7 +1,10 @@
+import { RetryStrategies, retry } from '../utils/retry.js';
 import db from './storage/postgresql.js';
 
+const query = (sql, params = []) => retry(() => db.query(sql, params), RetryStrategies.DATABASE);
+
 export async function createWebsite(name, url) {
-  const { rows } = await db.query(
+  const { rows } = await query(
     `INSERT INTO websites (name, url)
      VALUES ($1, $2)
      ON CONFLICT (url) DO UPDATE SET name = EXCLUDED.name
@@ -23,7 +26,7 @@ export async function storePage({ siteId, url, title, content, embedding, chunkI
   const vectorLiteral = formatVector(embedding);
   const tagsArray = `{${tags.map((tag) => `"${tag}"`).join(',')}}`;
 
-  await db.query(
+  await query(
     `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index, tags)
      VALUES ($1, $2, $3, $4, $5::vector, $6, $7::text[])
      ON CONFLICT (url, chunk_index) DO UPDATE SET
@@ -42,7 +45,7 @@ export async function storePageRelations(siteId, fromUrl, urls) {
   if (filteredUrls.length === 0) return;
 
   const values = filteredUrls.map((toUrl) => `($1, $2, '${toUrl}')`).join(', ');
-  await db.query(
+  await query(
     `INSERT INTO page_relations (website_id, from_url, to_url)
      VALUES ${values}
      ON CONFLICT (website_id, from_url, to_url) DO NOTHING`,
@@ -69,7 +72,7 @@ function filterByRelevance(query, docs) {
 export async function searchDocs(query, embedding, limit = 5) {
   const vectorLiteral = formatVector(embedding);
 
-  const result = await db.query(
+  const result = await query(
     `
   SELECT url, title, content, chunk_index, embedding <=> $1::vector AS distance
   FROM pages

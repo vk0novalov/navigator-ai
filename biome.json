@@ -19,7 +19,12 @@
         "useDateNow": "error",
         "useFlatMap": "error"
       },
-      "correctness": { "noInvalidBuiltinInstantiation": "error" },
+      "correctness": {
+        "noInvalidBuiltinInstantiation": "error",
+        "noUndeclaredVariables": "error",
+        "noUnusedVariables": "error",
+        "noGlobalObjectCalls": "error"
+      },
       "style": {
         "noNegationElse": "off",
         "useExplicitLengthCheck": "error",
@@ -38,7 +43,7 @@
   },
   "javascript": {
     "formatter": { "semicolons": "always", "quoteStyle": "single" },
-    "globals": ["Global1"]
+    "globals": []
   },
   "overrides": [
     {
