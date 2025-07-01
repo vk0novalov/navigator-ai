@@ -7,7 +7,8 @@ export const cleanupResponse = (response) => {
   }
 
   if (cleanedResponse.startsWith('```')) {
-    cleanedResponse = cleanedResponse.match(/```json\s*([\s\S]*?)\s*```/)?.[1] ?? cleanedResponse;
+    cleanedResponse =
+      cleanedResponse.match(/`{3,}json\s*([\s\S]*?)\s*`{3,}/)?.[1] ?? cleanedResponse;
   }
 
   return cleanedResponse.trim();
