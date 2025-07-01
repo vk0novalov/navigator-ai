@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.5.3/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
@@ -7,7 +7,7 @@
     "indentWidth": 2,
     "lineWidth": 100
   },
-  "organizeImports": { "enabled": true },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
@@ -47,11 +47,11 @@
   },
   "overrides": [
     {
-      "include": ["tests/**"],
+      "includes": ["**/tests/**"],
       "linter": { "rules": { "suspicious": { "noDoubleEquals": "off" } } }
     },
     {
-      "include": ["tests/**"],
+      "includes": ["**/tests/**"],
       "linter": { "rules": { "suspicious": { "noDoubleEquals": "off" } } }
     }
   ]

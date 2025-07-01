@@ -6,6 +6,6 @@ if git status --short | grep --quiet '^MM'; then
   exit 1;
 fi
 
-npx @biomejs/biome check --write --staged --files-ignore-unknown=true --organize-imports-enabled=true --no-errors-on-unmatched src/
+npx @biomejs/biome check --write --staged --files-ignore-unknown=true --no-errors-on-unmatched src/
 
 git update-index --again
