@@ -3,6 +3,10 @@ import db from './storage/postgresql.js';
 
 const runQuery = (sql, params = []) => retry(() => db.query(sql, params), RetryStrategies.DATABASE);
 
+// Prepare the database for efficient vector search
+// NOTE: It's OK for single-connection CLI app. For pooled apps, this SET must run on the same connection used for querying.
+await runQuery('SET hnsw.ef_search = 50');
+
 export async function createWebsite(name, url) {
   const { rows } = await runQuery(
     `INSERT INTO websites (name, url)
@@ -102,7 +106,3 @@ export async function searchDocs(query, embedding, limit = 5) {
 export async function dropAll() {
   await db.exec('DROP TABLE IF EXISTS websites, pages, page_relations CASCADE');
 }
-
-process.on('exit', async () => {
-  await db.close();
-});

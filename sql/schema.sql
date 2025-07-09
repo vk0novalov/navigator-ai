@@ -30,3 +30,5 @@ CREATE TABLE IF NOT EXISTS page_relations (
   context_snippet TEXT,  -- optional, for anchor text or link summary
   UNIQUE (website_id, from_url, to_url)
 );
+
+CREATE INDEX IF NOT EXISTS pages_embedding_index ON pages USING hnsw (embedding vector_cosine_ops);
