@@ -2,7 +2,7 @@ import { generateTags } from './services/classifier.js';
 import { embedText } from './services/embeddings.js';
 import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
 import { createWebsite, storePage, storePageRelations } from './services/storage.js';
-import { processAsync } from './utils/promise-limit.js';
+import { processAsync, spawnWorkers } from './utils/promise-limit.js';
 import { RetryStrategies, retry } from './utils/retry.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 
@@ -11,7 +11,9 @@ const BASE_URL = process.env.TARGET_SITE || 'https://overreacted.io';
 const MAX_DEPTH = process.env.MAX_DEPTH || 3;
 const MAX_CONCURRENT = process.env.MAX_CONCURRENT || 1;
 
-async function crawl(siteId, url, visited = new Set(), depth = 0) {
+const urlsQueue = [];
+
+async function crawl({ siteId, url, visited, depth }) {
   if (visited.has(url) || depth > MAX_DEPTH) return;
   visited.add(url);
 
@@ -44,11 +46,9 @@ async function crawl(siteId, url, visited = new Set(), depth = 0) {
 
     await storePageRelations(siteId, url, page.urls);
 
-    await processAsync(
-      page.urls,
-      async (url) => await crawl(siteId, url, visited, depth + 1),
-      MAX_CONCURRENT,
-    );
+    if (depth < MAX_DEPTH) {
+      urlsQueue.push(...page.urls.map((url) => ({ siteId, url, depth: depth + 1, visited })));
+    }
   } catch (err) {
     console.error(`❌ Failed to crawl ${url}:`, err.message);
   }
@@ -59,7 +59,10 @@ async function main() {
   const site = await createWebsite('Overreacted', normalizedUrl);
 
   console.log(`Starting crawl from ${normalizedUrl}`);
-  await crawl(site.id, normalizeUrl('/', normalizedUrl), new Set());
+  urlsQueue.push({ siteId: site.id, url: normalizedUrl, depth: 0, visited: new Set() });
+
+  await spawnWorkers(urlsQueue, crawl, MAX_CONCURRENT);
+
   console.log('✅ Done crawling');
   process.exit(0);
 }
