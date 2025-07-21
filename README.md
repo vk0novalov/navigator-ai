@@ -1,5 +1,7 @@
 # Navigator AI
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Navigator AI is a project that uses PostgreSQL with the pgvector extension to store and search web page data and their relationships using vector embeddings.
 
 ## Features
@@ -31,3 +33,6 @@ npm run search "two computers"
 ## Database
 - Uses PostgreSQL with the [pgvector](https://github.com/pgvector/pgvector) extension.
 - Schema is defined in `sql/schema.sql`.
+
+## License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
