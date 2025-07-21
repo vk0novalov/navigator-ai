@@ -1,3 +1,4 @@
+import { filterByRelevance } from '../utils/docs-relevance.js';
 import { RetryStrategies, retry } from '../utils/retry.js';
 import db from './storage/postgresql.js';
 
@@ -57,34 +58,30 @@ export async function storePageRelations(siteId, fromUrl, urls) {
   );
 }
 
-function filterByRelevance(query, docs) {
-  // Simple relevance scoring based on the query and document title/content
-  const words = query.split(/\s+/).filter(Boolean);
-  return docs
-    .map((doc) => {
-      const content = `${doc.title} ${doc.content}`.toLowerCase();
-      let score = words.filter((word) => content.includes(word.toLowerCase())).length;
-      if (doc.title.toLowerCase().includes(query.toLowerCase())) {
-        score += 5; // Boost score if title matches query
-      }
-      return { ...doc, score };
-    })
-    .filter((doc) => doc.score > 0)
-    .sort((a, b) => b.score - a.score);
-}
-
 export async function searchDocs(query, embedding, limit = 5) {
   const vectorLiteral = formatVector(embedding);
 
   const result = await runQuery(
     `
-  SELECT url, title, content, chunk_index, embedding <=> $1::vector AS distance
-  FROM pages
-  WHERE embedding <=> $1::vector < 0.7
-  ORDER BY distance
-  LIMIT $2
+    SELECT url, title, content, chunk_index,
+           vector_distance,
+           title_sim,
+           -- Hybrid score combining both signals
+           CASE
+             WHEN title_sim > 0.3 THEN title_sim * 2 + (1 - vector_distance) * 0.5
+             ELSE (1 - vector_distance)
+           END as hybrid_score
+    FROM (
+      SELECT url, title, content, chunk_index,
+             embedding <=> $1::vector AS vector_distance,
+             similarity(title, $3) AS title_sim
+      FROM pages
+      WHERE embedding <=> $1::vector < 0.7 OR title % $3
+    ) ranked
+    ORDER BY hybrid_score DESC
+    LIMIT $2
 `,
-    [vectorLiteral, Math.max(limit * 10, 50)], // Fetch more to filter later
+    [vectorLiteral, Math.max(limit * 10, 50), query], // Fetch more to filter later
   );
 
   const { rows } = result;

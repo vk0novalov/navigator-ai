@@ -1,4 +1,5 @@
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 CREATE TABLE IF NOT EXISTS websites (
   id SERIAL PRIMARY KEY,
@@ -19,6 +20,8 @@ CREATE TABLE IF NOT EXISTS pages (
   chunk_index INT NOT NULL DEFAULT 0,
   UNIQUE (url, chunk_index)
 );
+
+CREATE INDEX IF NOT EXISTS pages_title_trgm_idx ON pages USING GIN (title gin_trgm_ops);
 
 CREATE TABLE IF NOT EXISTS page_relations (
   id SERIAL PRIMARY KEY,

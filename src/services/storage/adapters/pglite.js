@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { vector } from '@electric-sql/pglite/vector';
 
-const db = new PGlite('.pgdata/', { extensions: { vector } });
+const db = new PGlite('.pgdata/', { extensions: { vector, pg_trgm } });
 try {
   const initialSql = await readFile('sql/schema.sql', 'utf8');
   await db.exec(initialSql);
