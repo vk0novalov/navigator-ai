@@ -12,5 +12,13 @@ time = performance.now();
 const results = await searchDocs(query, embedding, 1);
 console.log(`🔎 Search took ${(performance.now() - time).toFixed(2)}ms`);
 
-console.log(results.map((doc) => ({ title: doc.title, url: doc.url, distance: doc.distance })));
+console.log(
+  results.map((doc) => ({
+    title: doc.title,
+    url: doc.url,
+    vector_distance: doc.vector_distance,
+    hybrid_score: doc.hybrid_score,
+    score: doc.score,
+  })),
+);
 process.exit(0);

@@ -15,7 +15,7 @@ export function filterByRelevance(query, docs, { boostMax = 20, boostPerWordInTi
       if (titleLower.includes(queryLower)) {
         score += boostMax; // Boost score if title matches query
       }
-      return { ...doc, score };
+      return Object.assign(doc, { score });
     })
     .filter((doc) => doc.score > 0)
     .sort((a, b) => b.score - a.score);
