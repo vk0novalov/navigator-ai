@@ -3,7 +3,7 @@ import { RetryStrategies, retry } from '../../utils/retry.js';
 import { cleanupResponse } from './ai-utils.js';
 
 const EMBED_MODEL = 'bge-m3';
-const CLASSIFIER_MODEL = 'qwen3:30b-a3b';
+const CLASSIFIER_MODEL = 'gpt-oss:20b';
 
 const { OLLAMA_URL } = process.env;
 
@@ -44,7 +44,8 @@ export async function question(text) {
   return await retry(async () => {
     const result = await ollamaClient.chat({
       model: CLASSIFIER_MODEL,
-      messages: [{ role: 'user', content: `${text} /no_think` }],
+      messages: [{ role: 'user', content: text }],
+      think: 'low',
     });
     return cleanupResponse(result.message.content);
   }, RetryStrategies.AI_SERVICE);

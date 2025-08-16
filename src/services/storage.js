@@ -2,7 +2,32 @@ import { filterByRelevance } from '../utils/docs-relevance.js';
 import { RetryStrategies, retry } from '../utils/retry.js';
 import db from './storage/postgresql.js';
 
-const runQuery = (sql, params = []) => retry(() => db.query(sql, params), RetryStrategies.DATABASE);
+// NOTE: only for example purposes
+function namedQuery(query, params) {
+  const values = [];
+  const indexMap = {};
+  let i = 1;
+
+  const text = query.replace(/\$(\w+)/g, (_, key) => {
+    if (!(key in params)) {
+      throw new Error(`Missing param: ${key}`);
+    }
+
+    if (!(key in indexMap)) {
+      indexMap[key] = i++;
+      values.push(params[key]);
+    }
+
+    return `$${indexMap[key]}`;
+  });
+
+  return { text, values };
+}
+
+const runQuery = (sql, params = {}) => {
+  const { text, values } = namedQuery(sql, params);
+  return retry(() => db.query(text, values), RetryStrategies.DATABASE);
+};
 
 // Prepare the database for efficient vector search
 // NOTE: It's OK for single-connection CLI app. For pooled apps, this SET must run on the same connection used for querying.
@@ -11,10 +36,10 @@ await runQuery('SET hnsw.ef_search = 50');
 export async function createWebsite(name, url) {
   const { rows } = await runQuery(
     `INSERT INTO websites (name, url)
-     VALUES ($1, $2)
+     VALUES ($name, $url)
      ON CONFLICT (url) DO UPDATE SET name = EXCLUDED.name
      RETURNING id`,
-    [name, url],
+    { name, url },
   );
   return rows[0];
 }
@@ -27,19 +52,30 @@ const formatVector = (vector) => {
   return `[${vector.join(',')}]`;
 };
 
-export async function storePage({ siteId, url, title, content, embedding, chunkIndex, tags = [] }) {
+export async function storePage({
+  siteId,
+  url,
+  title,
+  content,
+  embedding,
+  chunkIndex,
+  breadcrumbs = [],
+  tags = [],
+}) {
   const vectorLiteral = formatVector(embedding);
+  const breadcrumbsArray = `{${breadcrumbs.map((breadcrumb) => `"${breadcrumb}"`).join(',')}}`;
   const tagsArray = `{${tags.map((tag) => `"${tag}"`).join(',')}}`;
 
   await runQuery(
-    `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index, tags)
-     VALUES ($1, $2, $3, $4, $5::vector, $6, $7::text[])
+    `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index, breadcrumbs, tags)
+     VALUES ($siteId, $url, $title, $content, $vectorLiteral::vector, $chunkIndex, $breadcrumbsArray::text[], $tagsArray::text[])
      ON CONFLICT (url, chunk_index) DO UPDATE SET
        title = EXCLUDED.title,
        content = EXCLUDED.content,
        embedding = EXCLUDED.embedding,
+       breadcrumbs = EXCLUDED.breadcrumbs,
        tags = EXCLUDED.tags`,
-    [siteId, url, title, content, vectorLiteral, chunkIndex, tagsArray],
+    { siteId, url, title, content, vectorLiteral, chunkIndex, breadcrumbsArray, tagsArray },
   );
 }
 
@@ -49,12 +85,12 @@ export async function storePageRelations(siteId, fromUrl, urls) {
   const filteredUrls = urls.filter((url) => url !== fromUrl);
   if (filteredUrls.length === 0) return;
 
-  const values = filteredUrls.map((toUrl) => `($1, $2, '${toUrl}')`).join(', ');
+  const values = filteredUrls.map((toUrl) => `($siteId, $fromUrl, '${toUrl}')`).join(', ');
   await runQuery(
     `INSERT INTO page_relations (website_id, from_url, to_url)
      VALUES ${values}
      ON CONFLICT (website_id, from_url, to_url) DO NOTHING`,
-    [siteId, fromUrl],
+    { siteId, fromUrl },
   );
 }
 
@@ -73,15 +109,15 @@ export async function searchDocs(query, embedding, limit = 5) {
            END as hybrid_score
     FROM (
       SELECT url, title, content, chunk_index,
-             embedding <=> $1::vector AS vector_distance,
-             similarity(title, $3) AS title_sim
+             embedding <=> $vectorLiteral::vector AS vector_distance,
+             similarity(title, $query) AS title_sim
       FROM pages
-      WHERE embedding <=> $1::vector < 0.7 OR title % $3
+      WHERE embedding <=> $vectorLiteral::vector < 0.7 OR title % $query
     ) ranked
     ORDER BY hybrid_score DESC
-    LIMIT $2
+    LIMIT $limit
 `,
-    [vectorLiteral, Math.max(limit * 10, 50), query], // Fetch more to filter later
+    { vectorLiteral, limit: Math.max(limit * 10, 50), query }, // Fetch more to filter later
   );
 
   const { rows } = result;

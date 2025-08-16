@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS pages (
   id SERIAL PRIMARY KEY,
   website_id INT NOT NULL REFERENCES websites(id) ON DELETE CASCADE,
   url TEXT NOT NULL,
+  breadcrumbs TEXT[] NOT NULL,  -- from root to this page
+  depth INT GENERATED ALWAYS AS (cardinality(breadcrumbs)) STORED,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
   embedding VECTOR(1024) NOT NULL,  -- Adjust dimension as needed
@@ -22,6 +24,7 @@ CREATE TABLE IF NOT EXISTS pages (
 );
 
 CREATE INDEX IF NOT EXISTS pages_title_trgm_idx ON pages USING GIN (title gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS pages_breadcrumbs_gin_idx ON pages USING gin (breadcrumbs);
 
 CREATE TABLE IF NOT EXISTS page_relations (
   id SERIAL PRIMARY KEY,

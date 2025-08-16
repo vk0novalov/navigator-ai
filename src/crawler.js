@@ -2,7 +2,7 @@ import { generateTags } from './services/classifier.js';
 import { embedText } from './services/embeddings.js';
 import { normalizeUrl, parseFromHTML } from './services/html-parser.js';
 import { createWebsite, storePage, storePageRelations } from './services/storage.js';
-import { processAsync, spawnWorkers } from './utils/promise-limit.js';
+import { spawnWorkers } from './utils/promise-limit.js';
 import { RetryStrategies, retry } from './utils/retry.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 
@@ -13,9 +13,11 @@ const MAX_CONCURRENT = process.env.MAX_CONCURRENT || 1;
 
 const urlsQueue = [];
 
-async function crawl({ siteId, url, visited, depth }) {
+async function crawl({ siteId, url, visited, depth, breadcrumbs = [] }) {
   if (visited.has(url) || depth > MAX_DEPTH) return;
   visited.add(url);
+
+  const currentBreadcrumbs = [...breadcrumbs, new URL(url).pathname];
 
   console.log(`🔍 Crawling: ${url}`);
   try {
@@ -38,6 +40,7 @@ async function crawl({ siteId, url, visited, depth }) {
         content: page.content,
         embedding,
         chunkIndex: i,
+        breadcrumbs: currentBreadcrumbs,
         tags: semanticTags,
       });
     }
@@ -47,7 +50,15 @@ async function crawl({ siteId, url, visited, depth }) {
     await storePageRelations(siteId, url, page.urls);
 
     if (depth < MAX_DEPTH) {
-      urlsQueue.push(...page.urls.map((url) => ({ siteId, url, depth: depth + 1, visited })));
+      urlsQueue.push(
+        ...page.urls.map((url) => ({
+          siteId,
+          url,
+          depth: depth + 1,
+          visited,
+          breadcrumbs: currentBreadcrumbs,
+        })),
+      );
     }
   } catch (err) {
     console.error(`❌ Failed to crawl ${url}:`, err.message);
