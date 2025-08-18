@@ -6,7 +6,7 @@ import { spawnWorkers } from './utils/promise-limit.js';
 import { RetryStrategies, retry } from './utils/retry.js';
 import splitTextIntoChunks from './utils/split-text-into-chunks.js';
 
-const BASE_URL = process.env.TARGET_SITE || 'https://overreacted.io';
+const BASE_URL = process.argv[2] || process.env.TARGET_SITE || 'https://overreacted.io';
 
 const MAX_DEPTH = process.env.MAX_DEPTH || 3;
 const MAX_CONCURRENT = process.env.MAX_CONCURRENT || 1;

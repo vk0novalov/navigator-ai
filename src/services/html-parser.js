@@ -2,14 +2,19 @@ import * as cheerio from 'cheerio';
 import { Defuddle } from 'defuddle/node';
 import { convert } from 'html-to-text';
 
-const blacklist = ['favicon.', 'apple-touch-icon.', 'apple-touch-icon-precomposed.'];
+const isLinkToPage = (link, baseUrl) => {
+  if (!URL.canParse(link, baseUrl)) return false;
+
+  const { pathname } = new URL(link, baseUrl);
+  const match = pathname.match(/\.([a-z0-9]{2,10})$/i);
+  if (!match) return true;
+
+  const ext = match[1].toLowerCase();
+  return ['html', 'htm', 'xhtml'].includes(ext);
+};
 
 const isLinkApplicable = (link, baseUrl) => {
-  return (
-    link &&
-    !blacklist.some((b) => link.includes(b)) &&
-    (link.startsWith('/') || link.startsWith(baseUrl))
-  );
+  return link && (link.startsWith('/') || link.startsWith(baseUrl)) && isLinkToPage(link, baseUrl);
 };
 
 export function normalizeUrl(rawUrl, baseUrl) {

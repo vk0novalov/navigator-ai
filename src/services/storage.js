@@ -24,14 +24,24 @@ function namedQuery(query, params) {
   return { text, values };
 }
 
-const runQuery = (sql, params = {}) => {
+const runQuery = async (
+  sql,
+  params = {},
+  { logQueryTime = false, explainAnalyze = false } = {},
+) => {
   const { text, values } = namedQuery(sql, params);
-  return retry(() => db.query(text, values), RetryStrategies.DATABASE);
+  const startTime = Date.now();
+  const result = await retry(
+    () => db.query(explainAnalyze ? `EXPLAIN ANALYZE ${text}` : text, values),
+    RetryStrategies.DATABASE,
+  );
+  if (logQueryTime) console.log(`ℹ️ Query took ${Date.now() - startTime}ms`);
+  return result;
 };
 
 // Prepare the database for efficient vector search
 // NOTE: It's OK for single-connection CLI app. For pooled apps, this SET must run on the same connection used for querying.
-await runQuery('SET hnsw.ef_search = 50');
+await runQuery('SET hnsw.ef_search = 80');
 
 export async function createWebsite(name, url) {
   const { rows } = await runQuery(
@@ -69,7 +79,7 @@ export async function storePage({
   await runQuery(
     `INSERT INTO pages (website_id, url, title, content, embedding, chunk_index, breadcrumbs, tags)
      VALUES ($siteId, $url, $title, $content, $vectorLiteral::vector, $chunkIndex, $breadcrumbsArray::text[], $tagsArray::text[])
-     ON CONFLICT (url, chunk_index) DO UPDATE SET
+     ON CONFLICT (website_id, url, chunk_index) DO UPDATE SET
        title = EXCLUDED.title,
        content = EXCLUDED.content,
        embedding = EXCLUDED.embedding,
@@ -99,7 +109,15 @@ export async function searchDocs(query, embedding, limit = 5) {
 
   const result = await runQuery(
     `
-    SELECT url, title, content, chunk_index,
+    WITH ranked AS (
+      SELECT id,
+            embedding <=> $vectorLiteral::vector AS vector_distance,
+            similarity(title, $query) AS title_sim
+      FROM pages
+      WHERE embedding <=> $vectorLiteral::vector < 0.7 OR title % $query
+      LIMIT $limit
+    )
+    SELECT url, title, content, breadcrumbs, chunk_index,
            vector_distance,
            title_sim,
            -- Hybrid score combining both signals
@@ -107,17 +125,11 @@ export async function searchDocs(query, embedding, limit = 5) {
              WHEN title_sim > 0.3 THEN title_sim * 2 + (1 - vector_distance) * 0.5
              ELSE (1 - vector_distance)
            END as hybrid_score
-    FROM (
-      SELECT url, title, content, chunk_index,
-             embedding <=> $vectorLiteral::vector AS vector_distance,
-             similarity(title, $query) AS title_sim
-      FROM pages
-      WHERE embedding <=> $vectorLiteral::vector < 0.7 OR title % $query
-    ) ranked
+    FROM ranked JOIN pages ON ranked.id = pages.id
     ORDER BY hybrid_score DESC
-    LIMIT $limit
 `,
     { vectorLiteral, limit: Math.max(limit * 10, 50), query }, // Fetch more to filter later
+    { logQueryTime: true },
   );
 
   const { rows } = result;

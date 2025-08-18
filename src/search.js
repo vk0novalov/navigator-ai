@@ -16,6 +16,7 @@ console.log(
   results.map((doc) => ({
     title: doc.title,
     url: doc.url,
+    breadcrumbs: doc.breadcrumbs,
     vector_distance: doc.vector_distance,
     hybrid_score: doc.hybrid_score,
     score: doc.score,

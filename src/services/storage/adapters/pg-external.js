@@ -1,12 +1,22 @@
 import { Client } from 'pg';
 
-const pg = new Client({
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-  host: process.env.POSTGRES_HOST,
-  port: process.env.POSTGRES_PORT,
-});
+const createConnectionParams = () => {
+  if (process.env.POSTGRES_CONNECTION_STRING) {
+    return {
+      connectionString: process.env.POSTGRES_CONNECTION_STRING,
+    };
+  }
+  return {
+    user: process.env.POSTGRES_USER,
+    password: process.env.POSTGRES_PASSWORD,
+    database: process.env.POSTGRES_DB,
+    host: process.env.POSTGRES_HOST,
+    port: process.env.POSTGRES_PORT,
+    ssl: process.env.POSTGRES_SSL ? process.env.POSTGRES_SSL === 'true' : undefined,
+  };
+};
+
+const pg = new Client(createConnectionParams());
 
 try {
   await pg.connect();

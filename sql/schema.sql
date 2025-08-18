@@ -20,11 +20,12 @@ CREATE TABLE IF NOT EXISTS pages (
   embedding VECTOR(1024) NOT NULL,  -- Adjust dimension as needed
   tags TEXT[] NOT NULL DEFAULT '{}',
   chunk_index INT NOT NULL DEFAULT 0,
-  UNIQUE (url, chunk_index)
+  UNIQUE (website_id, url, chunk_index)
 );
 
 CREATE INDEX IF NOT EXISTS pages_title_trgm_idx ON pages USING GIN (title gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS pages_breadcrumbs_gin_idx ON pages USING gin (breadcrumbs);
+CREATE INDEX IF NOT EXISTS pages_embedding_index ON pages USING hnsw (embedding vector_cosine_ops);
 
 CREATE TABLE IF NOT EXISTS page_relations (
   id SERIAL PRIMARY KEY,
@@ -36,5 +37,3 @@ CREATE TABLE IF NOT EXISTS page_relations (
   context_snippet TEXT,  -- optional, for anchor text or link summary
   UNIQUE (website_id, from_url, to_url)
 );
-
-CREATE INDEX IF NOT EXISTS pages_embedding_index ON pages USING hnsw (embedding vector_cosine_ops);
