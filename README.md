@@ -23,7 +23,7 @@ Navigator AI is a project that uses PostgreSQL with the pgvector extension to st
 ### Usage
 - Add or crawl pages using scripts in `src/`.
 ```sh
-npm run crawler
+npm run crawler -- https://overreacted.io
 ```
 - Query and search using vector embeddings.
 ```sh
