@@ -148,6 +148,16 @@ export async function searchDocs(query, embedding, limit = 5) {
   return filterByRelevance(query, Array.from(uniqueRows.values())).slice(0, limit);
 }
 
+export async function findBacklinksForRoute(toUrl) {
+  const result = await runQuery(
+    `
+    SELECT * FROM page_relations WHERE to_url = $toUrl
+  `,
+    { toUrl },
+  );
+  return result.rows;
+}
+
 export async function dropAll() {
   await db.exec('DROP TABLE IF EXISTS websites, pages, page_relations CASCADE');
 }
